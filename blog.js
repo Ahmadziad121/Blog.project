@@ -38,17 +38,19 @@ app.get('/',function (req, res) {
             res.json({ error: 'Internal server error' });
         }
     });
-app.post('/blogs', urlEncoded,async (req, res) => {
-    try {
-        const { userId, title, content } = req.body;
-        await req.blogsCollection.insertOne({ userId, title, content });
-        res.json({ message: 'Blog created successfully' });
-    } catch (error) {
-        console.error('Error creating blog:', error);
-        res.json({ error: 'Internal server error' });
-    }
-});
-app.get('/blogs', async (req, res) => {
+    app.post('/blogs', urlEncoded, async (req, res) => {
+        try {
+            const blogsCollection = client.db().collection('blogs'); 
+            const { userId, title, content } = req.body;
+            await blogsCollection.insertOne({ userId, title, content });
+            res.json({ message: 'Blog created successfully' });
+        } catch (error) {
+            console.error('Error creating blog:', error);
+            res.json({ error: 'Internal server error' });
+        }
+    });
+    
+app.get('/blogs/:userId', async (req, res) => {
     try {
         const blogsCollection = client.db("users").collection('blogs');
         const cachedData = await getFromCache(req.originalUrl);
@@ -64,17 +66,21 @@ app.get('/blogs', async (req, res) => {
         res.json({ error: 'Internal server error' });
     }
 });
-app.post('/search',urlEncoded, async (req, res) => {
+app.get('/search', urlEncoded,async (req, res) => {
     try {
-        const searchHistoryCollection = client.db("users").collection('searchhistory');
-        const { userId, query } = req.body;
-        await searchHistoryCollection.insertOne({ userId, query });
-        res.json({ message: 'Search history recorded' });
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({ error: 'Missing search query' });
+        }
+        const blogsCollection = client.db("users").collection('blogs');
+        const searchResults = await blogsCollection.find({}).toArray();
+        res.json(searchResults);
     } catch (error) {
-        console.error('Error recording search history:', error);
-        res.json({ error: 'Internal server error' });
+        console.error('Error searching blogs:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 
 async function getFromCache(key) {
