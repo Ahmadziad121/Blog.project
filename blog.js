@@ -26,7 +26,7 @@ var urlEncoded= bodyParse.urlencoded({extended:false})
 app.get('/',function (req, res) {
     res.send('start my server');})
 
-    app.post('/users', urlEncoded,async (req, res) => {
+    app.post('/profile', urlEncoded,async (req, res) => {
         try {
             const mydb = client.db('users');
             const collection = mydb.collection('users'); 
@@ -38,6 +38,23 @@ app.get('/',function (req, res) {
             res.json({ error: 'Internal server error' });
         }
     });
+
+app.get('/profile/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const collection = client.db("users").collection('users');
+        const user = await collection.findOne({ email });
+        if (!user) {
+            return res.json({ error: 'User not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.json({ error: 'Internal server error' });
+    }
+});
+
+
     app.post('/blogs', urlEncoded, async (req, res) => {
         try {
             const blogsCollection = client.db().collection('blogs'); 
@@ -66,20 +83,22 @@ app.get('/blogs/:userId', async (req, res) => {
         res.json({ error: 'Internal server error' });
     }
 });
-app.get('/search', urlEncoded,async (req, res) => {
+
+app.get('/search', async (req, res) => {
     try {
-        const { query } = req.query;
-        if (!query) {
-            return res.status(400).json({ error: 'Missing search query' });
-        }
+        const { query } = req.query; 
         const blogsCollection = client.db("users").collection('blogs');
-        const searchResults = await blogsCollection.find({}).toArray();
+        const searchResults = await blogsCollection.find({'content':query}).toArray();
+        const searchHistoryCollection = client.db("users").collection('searchhistory');
+        await searchHistoryCollection.insertOne({ query, timestamp: new Date() });
+        
         res.json(searchResults);
     } catch (error) {
         console.error('Error searching blogs:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 
 
